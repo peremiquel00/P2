@@ -16,9 +16,13 @@ typedef struct {
     int verbose;
     int version;
     /* options with arguments */
+    char *alpha0;
+    char *alpha1;
+    char *alpha2;
     char *input_wav;
     char *output_vad;
     char *output_wav;
+    char *tiempo_restante;
     /* special */
     const char *usage_pattern;
     const char *help_message;
@@ -36,6 +40,10 @@ const char help_message[] =
 "   -i FILE, --input-wav=FILE   WAVE file for voice activity detection\n"
 "   -o FILE, --output-vad=FILE  Label file with the result of VAD\n"
 "   -w FILE, --output-wav=FILE  WAVE file with silences cleared\n"
+"   -0 FLOAT, --alpha0=FLOAT     Ganancia para obtener el umbral de detection 0 [default: 5.7]\n"
+"   -1 FLOAT, --alpha1=FLOAT     Ganancia para obtener el umbral de detection 1 [default: 3.1]\n"
+"   -2 FLOAT, --alpha2=FLOAT     Ganancia para obtener el umbral de detection 1 [default: 40]\n"
+"   -t FLOAT, --tiempo_restante=FLOAT  Tiempo en ms x que será el que nos marque cambios de estado MV MS [default: 300]\n"
 "   -v, --verbose  Show debug information\n"
 "   -h, --help     Show this screen\n"
 "   --version      Show the version of the project\n"
@@ -108,13 +116,7 @@ Tokens* tokens_move(Tokens *ts) {
  */
 
 int parse_doubledash(Tokens *ts, Elements *elements) {
-    //int n_commands = elements->n_commands;
-    //int n_arguments = elements->n_arguments;
-    //Command *commands = elements->commands;
-    //Argument *arguments = elements->arguments;
-
-    // not implemented yet
-    // return parsed + [Argument(None, v) for v in tokens]
+   
     return 0;
 }
 
@@ -214,13 +216,7 @@ int parse_argcmd(Tokens *ts, Elements *elements) {
             return 0;
         }
     }
-    // not implemented yet, just skip for now
-    // parsed.append(Argument(None, tokens.move()))
-    /*fprintf(stderr, "! argument '%s' has been ignored\n", ts->current);
-    fprintf(stderr, "  '");
-    for (i=0; i<ts->argc ; i++)
-        fprintf(stderr, "%s ", ts->argv[i]);
-    fprintf(stderr, "'\n");*/
+    
     tokens_move(ts);
     return 0;
 }
@@ -250,7 +246,7 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
     Option *option;
     int i;
 
-    // fix gcc-related compiler warnings (unused)
+    
     (void)command;
     (void)argument;
 
@@ -270,6 +266,15 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
             args->verbose = option->value;
         } else if (!strcmp(option->olong, "--version")) {
             args->version = option->value;
+        } else if (!strcmp(option->olong, "--alpha0")) {
+            if (option->argument)
+                args->alpha0 = option->argument;
+        } else if (!strcmp(option->olong, "--alpha1")) {
+            if (option->argument)
+                args->alpha1 = option->argument;
+        } else if (!strcmp(option->olong, "--alpha2")) {
+            if (option->argument)
+                args->alpha2 = option->argument;
         } else if (!strcmp(option->olong, "--input-wav")) {
             if (option->argument)
                 args->input_wav = option->argument;
@@ -279,6 +284,9 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
         } else if (!strcmp(option->olong, "--output-wav")) {
             if (option->argument)
                 args->output_wav = option->argument;
+        } else if (!strcmp(option->olong, "--tiempo_restante")) {
+            if (option->argument)
+                args->tiempo_restante = option->argument;
         }
     }
     /* commands */
@@ -293,13 +301,10 @@ int elems_to_args(Elements *elements, DocoptArgs *args, bool help,
 }
 
 
-/*
- * Main docopt function
- */
-
 DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
     DocoptArgs args = {
-        0, 0, 0, NULL, NULL, NULL,
+        0, 0, 0, (char*) "5.9", (char*) "2.9", (char*) "50", NULL, NULL, NULL,
+        (char*) "400",
         usage_pattern, help_message
     };
     Tokens ts;
@@ -311,11 +316,15 @@ DocoptArgs docopt(int argc, char *argv[], bool help, const char *version) {
         {"-h", "--help", 0, 0, NULL},
         {"-v", "--verbose", 0, 0, NULL},
         {NULL, "--version", 0, 0, NULL},
+        {"-0", "--alpha0", 1, 0, NULL},
+        {"-1", "--alpha1", 1, 0, NULL},
+        {"-2", "--alphaa2", 1, 0, NULL},
         {"-i", "--input-wav", 1, 0, NULL},
         {"-o", "--output-vad", 1, 0, NULL},
-        {"-w", "--output-wav", 1, 0, NULL}
+        {"-w", "--output-wav", 1, 0, NULL},
+        {"-t", "--tiempo_restante", 1, 0, NULL}
     };
-    Elements elements = {0, 0, 6, commands, arguments, options};
+    Elements elements = {0, 0, 10, commands, arguments, options};
 
     ts = tokens_new(argc, argv);
     if (parse_args(&ts, &elements))

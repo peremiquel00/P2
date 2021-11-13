@@ -105,15 +105,22 @@ Ejercicios
   continuación, una captura de `wavesurfer` en la que se vea con claridad la señal temporal, el contorno de
   potencia y la tasa de cruces por cero, junto con el etiquetado manual de los segmentos.
 
+> <img src="img/SV_cont_pot_zrc.png" width="800" align="center">
 
 - A la vista de la gráfica, indique qué valores considera adecuados para las magnitudes siguientes:
 
 	* Incremento del nivel potencia en dB, respecto al nivel correspondiente al silencio inicial, para
 	  estar seguros de que un segmento de señal se corresponde con voz.
 
+	   >Tal y como se observa en la gráfica, un incremento alrededor de los 20 dB garantiza el cambio de silencio a voz
+
 	* Duración mínima razonable de los segmentos de voz y silencio.
 
+	>Dado que la sección del audio con más naturalidad a la hora de hablar es la del final (el audio está adjunto en la carpeta de la práctica, se hizo de esa forma para poder separar los segmentos de una forma más precisa), podemos observar que los tramos de voz tienen una longitud aporximada de 500-800 ms, mientras que los del silnecio son más cortos, alrededor de los 100ms
+
 	* ¿Es capaz de sacar alguna conclusión a partir de la evolución de la tasa de cruces por cero?
+	
+	>Se observa como en los tramos de voz, los picos son más elevados, lo que significa que la tasa de cruces por cero es menor. Tamvién se puede observar que en los sonidos fricativos, en nuestro caso la`f` de la palabra definitivo, se alcanza un máximo, mientras para sonidos oclusivos, en los que se la boca cierra el paso del aire, el valor es mucho menor.
 
 
 ### Desarrollo del detector de actividad vocal
@@ -121,16 +128,40 @@ Ejercicios
 - Complete el código de los ficheros de la práctica para implementar un detector de actividad vocal tan
   exacto como sea posible. Tome como objetivo la maximización de la puntuación-F `TOTAL`.
 
+  >Nuestro detector de voz consiste en un algoritmo que varia entre 5 estados, `ST_INIT`,`ST_SILENCE`, `ST_VOICE`, `ST_MAYBE_VOICE`, `ST_MAYBE_SILENCE`
+
+  >`ST_INIT`: Este estado es el inicial. Primeramente, inicializa dos variables necesarias como son k0 y k1 y posteriormente cambia de estado al estado silencio.
+
+  >`ST_SILENCE`: Este estado indica silencio en el tramo. Cuando la potencia de voz del tramo es inferior al parámetro k0 definido en el estado `ST_INIT`, el sistema se irá a este estado. 
+
+  >`ST_VOICE`: Este estado indica voz en el tramo. Cuando la potencia es superior al parámetro k0, el sistema se irá a este estado
+
+  >`ST_MAYBE_VOICE`: Este estado se da cuando estamos en el estado de silencio y en el tramo la potencia del señal supera el umbral k0.
+  Si la potencia supera el umbral k1 antes del parámetro de tiempo tiempo_restante, significa que en efecto el tramo es de voz y el sistema dará paso al estado ST_VOICE
+
+  > `ST_MAYBE_SILENCE`: Este estado se da cuando estamos en el estado de voz y en el tramo la potencia del señal supera el umbral k0.
+  Para detectar si estamos en silencio, el sistema mira si durante el tramo de tiempo tiempo_restante, la tasa de cruces por cero supera el umbral zcr_umbral, lo cual nos indica que, al ser una señal con poca potencia de voz ya que pasa muchas veces por 0, será un silencio
+  
+
 - Inserte una gráfica en la que se vea con claridad la señal temporal, el etiquetado manual y la detección
   automática conseguida para el fichero grabado al efecto. 
 
+> <img src="img/Señal_original_lab_vad.png" width="640" align="center">
 
 - Explique, si existen. las discrepancias entre el etiquetado manual y la detección automática.
+
+	>Podemos observar que si bien es cierto que los resultados obtenidos por nuestro algoritmo (transcription.vad) se asemejan mucho a los creados manualmente por nosotros a partir de la señal de audio (transcription.lab), en el tramo de voz nuestro algoritmo detecta estados de voz y silencio cuando realmente estamos diciendo un conjunto de palabras rápidamente sin pausas internas.
 
 - Evalúe los resultados sobre la base de datos `db.v4` con el script `vad_evaluation.pl` e inserte a 
   continuación las tasas de sensibilidad (*recall*) y precisión para el conjunto de la base de datos (sólo
   el resumen).
 
+> <img src="img/Summary_al_correr_con_bas_de_datos.png" width="640" align="center">
+
+>A la vista de los resultados, observamos que de las voces que hay reconocemos el 93,23%, y de las voces que hemos detectado 79,79% son correctos.
+>En cambio, de todos los silencios que hay, detectamos el 86,67% mientras que 89% de estos son correctos.
+
+>Si bien es cierto que tenemos una buena precisión de voz, la verdad es que su recall no es demasiado alto, mientras que en el silencio la precisión y el recall están más equilibrados
 
 ### Trabajos de ampliación
 
@@ -145,6 +176,7 @@ Ejercicios
 - Si ha usado `docopt_c` para realizar la gestión de las opciones y argumentos del programa `vad`, inserte
   una captura de pantalla en la que se vea el mensaje de ayuda del programa.
 
+<img src="img/captura_docopt.png" width="700" align="center">
 
 ### Contribuciones adicionales y/o comentarios acerca de la práctica
 

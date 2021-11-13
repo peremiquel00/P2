@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 /* TODO: add the needed states */
-typedef enum {ST_UNDEF=0, ST_SILENCE, ST_VOICE, ST_INIT} VAD_STATE;
+typedef enum {ST_MAYBE_VOICE=0, ST_MAYBE_SILENCE=1, ST_SILENCE, ST_VOICE, ST_INIT} VAD_STATE;
 
 /* Return a string label associated to each state */
 const char *state2str(VAD_STATE st);
@@ -15,6 +15,14 @@ typedef struct {
   VAD_STATE state;
   float sampling_rate;
   unsigned int frame_length;
+  float k0;
+  float k1;
+  float alpha0;
+  float alpha1;
+  float alpha2;
+  float tiempo_restante_inicial;
+  float tiempo_restante;
+  float zcr_umbral;
   float last_feature; /* for debuggin purposes */
 } VAD_DATA;
 
@@ -22,7 +30,7 @@ typedef struct {
    It should return allocated and initialized values of vad_data
 
    sampling_rate: ... the sampling rate */
-VAD_DATA *vad_open(float sampling_rate);
+VAD_DATA *vad_open(float sampling_rate, float alpha0, float alpha1, float alpha2, float tiempo_restante_inicial);
 
 /* vad works frame by frame.
    This function returns the frame size so that the program knows how

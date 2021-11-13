@@ -1,7 +1,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-
+#include "pav_analysis.h"
 #include "vad.h"
 
 const float FRAME_TIME = 10.0F; /* in ms. */
@@ -13,7 +13,7 @@ const float FRAME_TIME = 10.0F; /* in ms. */
  */
 
 const char *state_str[] = {
-  "UNDEF", "S", "V", "INIT"
+  "MAYBE_SILENCE", "MAYBE_VOICE", "S", "V", "INIT"
 };
 
 const char *state2str(VAD_STATE st) {
@@ -42,7 +42,10 @@ Features compute_features(const float *x, int N) {
    * For the moment, compute random value between 0 and 1 
    */
   Features feat;
-  feat.zcr = feat.p = feat.am = (float) rand()/RAND_MAX;
+  //feat.zcr = feat.p = feat.am = (float) rand()/RAND_MAX;
+  feat.zcr = compute_zcr(x,N, 16000);
+  feat.am = compute_am(x,N);
+  feat.p = compute_power(x,N);
   return feat;
 }
 
@@ -50,10 +53,14 @@ Features compute_features(const float *x, int N) {
  * TODO: Init the values of vad_data
  */
 
-VAD_DATA * vad_open(float rate) {
+VAD_DATA * vad_open(float rate, float alpha0, float alpha1, float alpha2, float tiempo_restante_inicial) {
   VAD_DATA *vad_data = malloc(sizeof(VAD_DATA));
   vad_data->state = ST_INIT;
   vad_data->sampling_rate = rate;
+  vad_data->alpha0 = alpha0;
+  vad_data->alpha1 = alpha1;
+  vad_data->alpha2 = alpha2;
+  vad_data->tiempo_restante_inicial = tiempo_restante_inicial;
   vad_data->frame_length = rate * FRAME_TIME * 1e-3;
   return vad_data;
 }
@@ -90,29 +97,55 @@ VAD_STATE vad(VAD_DATA *vad_data, float *x) {
   switch (vad_data->state) {
   case ST_INIT:
     vad_data->state = ST_SILENCE;
+    vad_data->k0 = f.p + vad_data->alpha0;
+    vad_data->k1 = vad_data->k0 + vad_data->alpha1;
     break;
 
   case ST_SILENCE:
-    if (f.p > 0.95)
-      vad_data->state = ST_VOICE;
+    if (f.p > vad_data->k0){
+      vad_data->state = ST_MAYBE_VOICE; 
+      vad_data->tiempo_restante = vad_data->tiempo_restante_inicial;
+    }
     break;
 
   case ST_VOICE:
-    if (f.p < 0.01)
+    if (f.p < vad_data->k0){
+      vad_data->state = ST_MAYBE_SILENCE;
+      vad_data->tiempo_restante = vad_data->tiempo_restante_inicial;
+      vad_data->zcr_umbral = f.zcr + vad_data->alpha2;
+    }
+    break;
+
+  case ST_MAYBE_VOICE:
+    if (f.p > vad_data->k1){  
+      if (vad_data->alpha1<vad_data->tiempo_restante) //Condición de tiempo para poder decidir
+        vad_data->state = ST_VOICE;
+      vad_data->tiempo_restante = vad_data->tiempo_restante - vad_data->frame_length; //Restamos el tiempo que nos queda menos la longitud del frame
+    } else
       vad_data->state = ST_SILENCE;
     break;
 
-  case ST_UNDEF:
+  case ST_MAYBE_SILENCE:
+    if (vad_data->tiempo_restante > 0){
+      if (f.zcr > vad_data->zcr_umbral)
+        vad_data->state = ST_VOICE;
+      vad_data->tiempo_restante = vad_data->tiempo_restante - vad_data->frame_length;  //Restamos el tiempo que nos queda menos la longitud del frame
+    } else
+      vad_data->state = ST_SILENCE;
     break;
+
   }
 
   if (vad_data->state == ST_SILENCE ||
-      vad_data->state == ST_VOICE)
-    return vad_data->state;
-  else
-    return ST_UNDEF;
+      vad_data->state == ST_VOICE  ||
+      vad_data->state == ST_MAYBE_SILENCE)
+      return vad_data->state;
+  else return ST_MAYBE_VOICE;
+  
 }
 
+
+ 
 void vad_show_state(const VAD_DATA *vad_data, FILE *out) {
   fprintf(out, "%d\t%f\n", vad_data->state, vad_data->last_feature);
 }

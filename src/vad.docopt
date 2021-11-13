@@ -9,6 +9,10 @@ Options:
    -i FILE, --input-wav=FILE   WAVE file for voice activity detection
    -o FILE, --output-vad=FILE  Label file with the result of VAD
    -w FILE, --output-wav=FILE  WAVE file with silences cleared
+   -0 FLOAT, --alpha0=FLOAT    Ganancia para obtener el umbral de detection 0 [default: 5.7]
+   -1 FLOAT, --alpha1=FLOAT    Ganancia para obtener el umbral de detection 1 [default: 7.5]
+   -2 FLOAT, --alpha2=FLOAT    Margen para el umbral de zcr [default: 40]
+   -t FLOAT, --tiempo_restante=FLOAT  Tiempo en ms x que será el que nos marque cambios de estado[default: 300]
    -v, --verbose  Show debug information
    -h, --help     Show this screen
    --version      Show the version of the project
